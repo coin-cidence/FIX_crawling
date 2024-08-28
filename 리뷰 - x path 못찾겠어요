@@ -1,0 +1,95 @@
+from selenium.webdriver.common.by import By  # 필요한 임포트 확인
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
+
+# 리뷰 데이터를 저장할 리스트 초기화
+all_reviews = []
+
+for url in tqdm(url_list):
+    try:
+        driver.get(url)
+        
+        # 리뷰 버튼 클릭 대기
+        try:
+            review_button = WebDriverWait(driver, 5).until(
+                EC.presence_of_element_located((By.XPATH, '//*[@id="container-a61d5c190a"]/div/div[3]/div/div/div[1]/div[2]/div/a[4]/h2'))
+            )
+            if review_button.is_displayed():
+                review_button.click()
+        except (NoSuchElementException, TimeoutException):
+            print(f"Review button not found or could not be clicked for URL {url}")
+            pass
+
+        # 'Locale (India)' 옵션 선택 
+        try:
+            locale_india = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CLASS_NAME, 'bv-rnr__sc-1wzl89g-0.gpRfFu'))
+            )
+            locale_india.click()  # 드롭다운 메뉴 클릭
+        except (NoSuchElementException, TimeoutException) as e:
+            print(f"Error selecting locale option for URL {url}: {e}")
+        
+        # 낮은 별점 접근
+        try:
+            low_rating_option = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "bv-rnr__sc-13ijx62-8.igArQg"))
+            )
+            low_rating_option.click()
+        except (NoSuchElementException, TimeoutException) as e:
+            print(f"Error selecting sort option for URL {url}: {e}")
+        
+        # 데이터 확보
+        page_number = 1
+        
+        while True:
+            try:
+                # 페이지 URL 업데이트
+                current_url = driver.current_url
+                full_url = f'{current_url}&page={page_number}'
+                driver.get(full_url)
+                
+                # ZmyHeo 클래스의 존재 여부를 확인
+                WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, 'ZmyHeo')))
+                
+                # 데이터 추출
+                title_elements = driver.find_elements(By.CLASS_NAME, 'bv-rnr__sc-16dr7i1-20.ijcDoa')
+                date_elements = driver.find_elements(By.CLASS_NAME, 'bv-rnr__tbt1zd-0.aSyQR')
+                content_elements = driver.find_elements(By.CLASS_NAME, 'bv-rnr__sc-16dr7i1-3.lhOBbI')
+                star_elements = driver.find_elements(By.CLASS_NAME, "bv-rnr__sc-16dr7i1-18.isujDp")
+                age_elements = driver.find_elements(By.CLASS_NAME, 'bv-rnr__f9cpbf-0.bohEEG')
+                state_elements = driver.find_elements(By.CLASS_NAME, 'bv-rnr__emkap-1.dXwBxU')
+                gender_elements = driver.find_elements(By.CLASS_NAME, 'bv-rnr__sc-1sgyyik-0.jsjcEl')
+                
+                # 리스트 생성
+                title_list = [elem.text for elem in title_elements]
+                date_list = [elem.text for elem in date_elements]
+                content_list = [elem.text for elem in content_elements]
+                star_list = [elem.text for elem in star_elements]
+                age_list = [elem.text for elem in age_elements]
+                state_list = [elem.text for elem in state_elements]
+                gender_list = [elem.text for elem in gender_elements]
+                
+                # 리뷰 데이터를 모든 리뷰 리스트에 추가
+                for t, s, d, r, a, g, c in zip(title_list, state_list, date_list, star_list, age_list, gender_list, content_list):
+                    all_reviews.append({
+                        'title': t,
+                        'state': s,
+                        'date': d,
+                        'star': r,
+                        'age': a,
+                        'gender': g,
+                        'content': c
+                    })
+
+                # 페이지 번호 증가
+                page_number += 1
+                
+            except (NoSuchElementException, TimeoutException):
+                break
+    
+    except Exception as e:
+        print(f"Error processing URL {url}: {e}")
+
+# 현재 창 닫기
+driver.quit()
